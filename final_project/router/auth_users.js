@@ -6,63 +6,35 @@ const regd_users = express.Router();
 let users = [];
 
 const isValid = (username) => {
-  //returns boolean
-  //write code to check is the username is valid
-
-  let userswithsamename = users.filter((user) => {
-    return user.username === username;
-  });
-  if (userswithsamename.length > 0) {
-    return true;
-  } else {
-    return false;
-  }
-};
+    return users.some(user => user.username === username);
+}
 
 const authenticatedUser = (username, password) => {
-  //returns boolean
-  //write code to check if username and password match the one we have in records.
-  let validusers = users.filter((user) => {
-    // if(user.username === username && user.password === password)
-    return user.username === username && user.password === password;
-  });
-  if (validusers.length > 0) {
-    return true;
-  } else {
-    return false;
-  }
-};
+    return users.some(user => user.username === username && user.password === password);
+}
 
-//only registered users can login
+regd_users.post("/register", (req, res) => {
+    const { username, password } = req.body;
+    if (username && password) {
+        if (!isValid(username)) {
+            users.push({ username, password });
+            return res.status(201).json({ message: "User successfully registered. Now you can login" });
+        } else {
+            return res.status(400).json({ message: "User already exists!" });
+        }
+    }
+    return res.status(400).json({ message: "Unable to register user." });
+});
+
 regd_users.post("/login", (req, res) => {
-  // console.log('Here')
-  //Write your code here
-  const username = req.body.username;
-  const password = req.body.password;
-
-  if (!username || !password) {
-    return res.status(404).json({ message: "Error logging in" });
-  }
-
-  if (authenticatedUser(username, password)) {
-    let accessToken = jwt.sign(
-      {
-        data: password,
-      },
-      "access",
-      { expiresIn: 60 * 60 }
-    );
-
-    req.session.authorization = {
-      accessToken,
-      username,
-    };
-    return res.status(200).send("User successfully logged in");
-  } else {
-    return res
-      .status(208)
-      .json({ message: "Invalid Login. Check username and password" });
-  }
+    const { username, password } = req.body;
+    if (authenticatedUser(username, password)) {
+        const token = jwt.sign({ username }, "access", { expiresIn: '1h' });
+        req.session.authorization = { accessToken: token };
+        return res.status(200).json({ message: "Logged in successfully" });
+    } else {
+        return res.status(401).json({ message: "Invalid username or password" });
+    }
 });
 
 // Add a book review
